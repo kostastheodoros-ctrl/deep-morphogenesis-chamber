@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deep Morphogenesis Chamber v2.2</title>
+  <style>
+    :root {
+      --panel: rgba(10, 15, 21, 0.84);
+      --panel-border: rgba(180, 210, 235, 0.12);
+      --text: rgba(223, 235, 245, 0.92);
+      --muted: rgba(160, 184, 204, 0.68);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at 35% 28%, #101720 0%, #090d12 40%, #050709 100%);
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    #app {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      background:
+        radial-gradient(circle at 28% 22%, rgba(34, 45, 60, 0.18) 0%, rgba(10, 14, 18, 0.02) 28%, transparent 54%),
+        radial-gradient(circle at 72% 68%, rgba(50, 34, 18, 0.12) 0%, rgba(10, 14, 18, 0.01) 26%, transparent 56%),
+        linear-gradient(180deg, rgba(10, 13, 16, 0.96), rgba(5, 7, 9, 0.985));
+    }
+
+    .hud {
+      position: absolute;
+      inset: 18px 296px auto 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.26);
+    }
+
+    .status {
+      padding: 12px 14px;
+      min-width: 320px;
+    }
+
+    .status h1, .archive h2 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(222, 236, 247, 0.94);
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(120px, 1fr));
+      gap: 8px 14px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .status-grid span strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .help {
+      padding: 12px 14px;
+      font-size: 11px;
+      color: var(--muted);
+      max-width: 360px;
+      line-height: 1.4;
+    }
+
+    .help strong { color: var(--text); }
+
+    .archive {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      bottom: 18px;
+      width: 260px;
+      padding: 12px;
+      z-index: 6;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .archive p {
+      margin: 0;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .slots {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .slot {
+      position: relative;
+      border-radius: 12px;
+      border: 1px solid rgba(184, 212, 235, 0.12);
+      background: linear-gradient(180deg, rgba(15, 21, 28, 0.9), rgba(8, 11, 15, 0.94));
+      cursor: pointer;
+      overflow: hidden;
+      min-height: 108px;
+      transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+    }
+
+    .slot:hover {
+      transform: translateY(-1px);
+      border-color: rgba(245, 205, 160, 0.28);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+    }
+
+    .slot.active {
+      border-color: rgba(255, 196, 126, 0.42);
+      box-shadow: inset 0 0 0 1px rgba(255, 186, 112, 0.14), 0 10px 18px rgba(0, 0, 0, 0.24);
+    }
+
+    .slot.empty::after {
+      content: "vacant";
+      position: absolute;
+      inset: auto 8px 6px auto;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(144, 168, 188, 0.34);
+    }
+
+    .slot canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.0), rgba(0, 0, 0, 0.08));
+    }
+
+    .slot-meta {
+      position: absolute;
+      left: 7px;
+      right: 7px;
+      bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 9px;
+      color: rgba(195, 212, 226, 0.78);
+      pointer-events: none;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .slot-badge {
+      position: absolute;
+      top: 6px;
+      left: 7px;
+      font-size: 9px;
+      color: rgba(200, 219, 234, 0.78);
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      pointer-events: none;
+    }
+
+    .center-label {
+      position: absolute;
+      left: 20px;
+      bottom: 18px;
+      font-size: 11px;
+      color: var(--muted);
+      z-index: 5;
+      pointer-events: none;
+      line-height: 1.35;
+      max-width: min(52vw, 560px);
+    }
+
+    .center-label strong { color: var(--text); }
+  </style>
+</head>
+<body>
+<div id="app">
+  <canvas id="mainCanvas"></canvas>
+
+  <div class="hud">
+    <div class="panel status">
+      <h1>Deep Morphogenesis Chamber v2.2</h1>
+      <div class="status-grid">
+        <span>state <strong id="phaseLabel">latency</strong></span>
+        <span>mode <strong id="modeLabel">wire</strong></span>
+        <span>planes <strong>3 active</strong></span>
+        <span>archive <strong id="archiveCount">0 / 8</strong></span>
+        <span>admissibility <strong id="admissibilityLabel">weighted</strong></span>
+        <span>coupling <strong id="couplingLabel">idle</strong></span>
+        <span>specimen <strong id="specimenLabel">none</strong></span>
+        <span>field role <strong>causal</strong></span>
+      </div>
+    </div>
+    <div class="panel help">
+      <strong>Click</strong> field for local bias / trigger support.<br>
+      <strong>I</strong> inspect current specimen.<br>
+      <strong>A</strong> archive inspected specimen.<br>
+      <strong>W</strong> wire mode, <strong>S</strong> shade mode.<br>
+      Click a slot to reopen the stored specimen.
+    </div>
+  </div>
+
+  <aside class="panel archive">
+    <div>
+      <h2>Specimen Archive</h2>
+      <p>Persistent containers for detached event bodies. Slots retain geometry, rotation, scale, render mode, unified skin, and reopen state.</p>
+    </div>
+    <div class="slots" id="slots"></div>
+  </aside>
+
+  <div class="center-label">
+    <strong>state carries continuity</strong><br>
+    <strong>event carries difference</strong><br>
+    v2.2 reinforces causal coupling between field deformation and event formation.
+  </div>
+</div>
+
+<script>
+(() => {
+  const TAU = Math.PI * 2;
+  const canvas = document.getElementById('mainCanvas');
+  const ctx = canvas.getContext('2d');
+  const phaseLabel = document.getElementById('phaseLabel');
+  const archiveCount = document.getElementById('archiveCount');
+  const modeLabel = document.getElementById('modeLabel');
+  const specimenLabel = document.getElementById('specimenLabel');
+  const admissibilityLabel = document.getElementById('admissibilityLabel');
+  const couplingLabel = document.getElementById('couplingLabel');
+  const slotsRoot = document.getElementById('slots');
+
+  const DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const slotCount = 8;
+  const slotViews = [];
+  const FACE_LIGHT = normalize3D({ x: -0.36, y: -0.44, z: 0.82 });
+
+  const state = {
+    w: 0,
+    h: 0,
+    chamberWidth: 0,
+    archiveWidth: 278,
+    time: 0,
+    mouseX: 0.45,
+    mouseY: 0.48,
+    biasX: 0.45,
+    biasY: 0.48,
+    biasPower: 0,
+    lastTime: performance.now(),
+    renderMode: 'wire',
+    inspect: false,
+    currentSpecimen: null,
+    selectedSlot: -1,
+    archive: new Array(slotCount).fill(null),
+    event: {
+      active: false,
+      phase: 'latency',
+      age: 0,
+      duration: 18.8,
+      cooldown: 4.6,
+      origin: { x: 0.5, y: 0.5 },
+      center3D: { x: 0, y: 0, z: 0 },
+      clusterIds: [],
+      couplingIds: [],
+      skeleton: [],
+      boundary: [],
+      specimen: null,
+      residual: [],
+      stressed: 0,
+      holdStrength: 0,
+      nextTrigger: 1.8,
+      idCounter: 1
+    },
+    nodes: [],
+    nodeMap: new Map(),
+    fieldLinks: [],
+    fieldTriangles: [],
+    planes: [
+      { depth: 0.36, parallax: 0.028, speed: 0.22, lineAlpha: 0.18, radius: 1.62 },
+      { depth: 0.60, parallax: 0.046, speed: 0.15, lineAlpha: 0.22, radius: 1.26 },
+      { depth: 0.84, parallax: 0.064, speed: 0.10, lineAlpha: 0.28, radius: 0.96 }
+    ]
+  };
+
+  function rand(min = 0, max = 1) { return min + Math.random() * (max - min); }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function smoothstep(edge0, edge1, x) {
+    const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+    return t * t * (3 - 2 * t);
+  }
+  function easeOutQuint(t) { return 1 - Math.pow(1 - t, 5); }
+  function normalize3D(v) {
+    const len = Math.hypot(v.x, v.y, v.z) || 1;
+    return { x: v.x / len, y: v.y / len, z: v.z / len };
+  }
+  function dot3D(a, b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+  function cross3D(a, b) {
+    return {
+      x: a.y * b.z - a.z * b.y,
+      y: a.z * b.x - a.x * b.z,
+      z: a.x * b.y - a.y * b.x
+    };
+  }
+  function averageOfIndices(points, indices, zBias = 0) {
+    const avg = { x: 0, y: 0, z: 0 };
+    if (!indices.length) return avg;
+    for (const idx of indices) {
+      avg.x += points[idx].x;
+      avg.y += points[idx].y;
+      avg.z += points[idx].z;
+    }
+    avg.x /= indices.length;
+    avg.y /= indices.length;
+    avg.z /= indices.length;
+    avg.z += zBias;
+    return avg;
+  }
+  function angularDiff(a, b) {
+    let d = Math.abs(a - b) % TAU;
+    if (d > Math.PI) d = TAU - d;
+    return d;
+  }
+  function resampleRing(ring, count) {
+    if (!ring.length) return [];
+    if (ring.length === count) return ring.slice();
+    const out = [];
+    for (let i = 0; i < count; i++) {
+      const idx = Math.floor(i * ring.length / count) % ring.length;
+      out.push(ring[idx]);
+    }
+    return out;
+  }
+  function dedupeRing(ring) {
+    if (!ring.length) return [];
+    const out = [ring[0]];
+    for (let i = 1; i < ring.length; i++) {
+      if (ring[i] !== out[out.length - 1]) out.push(ring[i]);
+    }
+    if (out.length > 2 && out[0] === out[out.length - 1]) out.pop();
+    return out;
+  }
+
+  function rotate3D(p, rot) {
+    let { x, y, z } = p;
+    const sx = Math.sin(rot.x), cx = Math.cos(rot.x);
+    const sy = Math.sin(rot.y), cy = Math.cos(rot.y);
+    const sz = Math.sin(rot.z), cz = Math.cos(rot.z);
+
+    let y1 = y * cx - z * sx;
+    let z1 = y * sx + z * cx;
+    y = y1; z = z1;
+
+    let x2 = x * cy + z * sy;
+    let z2 = -x * sy + z * cy;
+    x = x2; z = z2;
+
+    let x3 = x * cz - y * sz;
+    let y3 = x * sz + y * cz;
+    return { x: x3, y: y3, z };
+  }
+
+  function projectToScreen(p, opts = {}) {
+    const perspective = opts.perspective || 760;
+    const camZ = opts.camZ || 2.4;
+    const scale = opts.scale || 1;
+    const px = p.x * scale;
+    const py = p.y * scale;
+    const pz = p.z * scale;
+    const k = perspective / (perspective + (pz + camZ * 100) * 0.38);
+    return {
+      x: opts.cx + px * k,
+      y: opts.cy + py * k,
+      z: pz,
+      k
+    };
+  }
+
+  function makeNode(planeIndex) {
+    const plane = state.planes[planeIndex];
+    const ox = rand(-0.12, 1.12);
+    const oy = rand(-0.12, 1.12);
+    return {
+      id: `${planeIndex}-${Math.random().toString(36).slice(2, 9)}`,
+      planeIndex,
+      depth: plane.depth,
+      x: ox,
+      y: oy,
+      baseX: ox,
+      baseY: oy,
+      seed: rand(0, 1000),
+      tension: rand(0.25, 1),
+      temp: rand(0.15, 0.65),
+      phaseOffset: rand(0, TAU),
+      px: 0,
+      py: 0,
+      onScreen: false,
+      causal: 0,
+      cluster: 0
+    };
+  }
+
+  function rebuildNodeMap() {
+    state.nodeMap = new Map();
+    for (const node of state.nodes) state.nodeMap.set(node.id, node);
+  }
+
+  function buildField() {
+    state.nodes = [];
+    state.fieldLinks = [];
+    state.fieldTriangles = [];
+    const counts = [24, 20, 16];
+
+    for (let p = 0; p < state.planes.length; p++) {
+      for (let i = 0; i < counts[p]; i++) {
+        state.nodes.push(makeNode(p));
+      }
+    }
+    rebuildNodeMap();
+
+    const groups = state.planes.map((_, i) => state.nodes.filter(n => n.planeIndex === i));
+
+    for (let p = 0; p < groups.length; p++) {
+      const nodes = groups[p];
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[i].baseX - nodes[j].baseX;
+          const dy = nodes[i].baseY - nodes[j].baseY;
+          const d = Math.hypot(dx, dy);
+          if (d < 0.24) state.fieldLinks.push({ a: nodes[i].id, b: nodes[j].id, type: 'intra' });
+        }
+      }
+    }
+
+    for (let i = 0; i < groups[0].length; i++) {
+      const a = groups[0][i];
+      let nearestMid = null;
+      let nearestBack = null;
+      let dMid = Infinity;
+      let dBack = Infinity;
+
+      for (const b of groups[1]) {
+        const d = Math.hypot(a.baseX - b.baseX, a.baseY - b.baseY);
+        if (d < dMid) { dMid = d; nearestMid = b; }
+      }
+      for (const c of groups[2]) {
+        const d = Math.hypot(a.baseX - c.baseX, a.baseY - c.baseY);
+        if (d < dBack) { dBack = d; nearestBack = c; }
+      }
+
+      if (nearestMid && dMid < 0.22) state.fieldLinks.push({ a: a.id, b: nearestMid.id, type: 'cross' });
+      if (nearestBack && dBack < 0.26) state.fieldLinks.push({ a: a.id, b: nearestBack.id, type: 'cross' });
+    }
+
+    for (const mid of groups[1]) {
+      const near = groups[1]
+        .filter(n => n !== mid)
+        .map(n => ({ n, d: Math.hypot(mid.baseX - n.baseX, mid.baseY - n.baseY) }))
+        .filter(item => item.d < 0.28)
+        .sort((a, b) => a.d - b.d)
+        .slice(0, 3);
+
+      if (near.length >= 2) {
+        state.fieldTriangles.push([mid.id, near[0].n.id, near[1].n.id]);
+      }
+    }
+  }
+
+  function resize() {
+    state.w = window.innerWidth;
+    state.h = window.innerHeight;
+    state.chamberWidth = state.w - state.archiveWidth;
+
+    canvas.width = Math.floor(state.w * DPR);
+    canvas.height = Math.floor(state.h * DPR);
+    canvas.style.width = state.w + 'px';
+    canvas.style.height = state.h + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    createSlots();
+  }
+
+  function updateField(dt) {
+    state.biasPower = Math.max(0, state.biasPower - dt * 0.12);
+    const ev = state.event;
+    const phaseT = ev.active ? clamp(ev.age / ev.duration, 0, 1) : 0;
+    const fieldDrive = ev.active
+      ? phaseT < 0.28 ? smoothstep(0.0, 0.28, phaseT)
+      : phaseT < 0.70 ? 1
+      : 1 - smoothstep(0.70, 1.0, phaseT)
+      : 0;
+
+    const clusterSet = new Set(ev.clusterIds);
+    const couplingSet = new Set(ev.couplingIds);
+
+    for (const node of state.nodes) {
+      const plane = state.planes[node.planeIndex];
+      const t = state.time * plane.speed;
+      const drift = 0.0013 + (1 - plane.depth) * 0.0017;
+      const nx = Math.sin(t + node.seed * 0.47 + node.phaseOffset) * drift;
+      const ny = Math.cos(t * 0.87 + node.seed * 0.31 + node.phaseOffset * 1.4) * drift;
+      const renewal = 0.00036 + (1 - plane.depth) * 0.00018;
+
+      node.baseX += nx + Math.sin(t * 0.17 + node.seed * 0.11) * renewal;
+      node.baseY += ny + Math.cos(t * 0.15 + node.seed * 0.19) * renewal;
+
+      if (node.baseX < -0.18) node.baseX += 1.34;
+      if (node.baseX > 1.18) node.baseX -= 1.34;
+      if (node.baseY < -0.18) node.baseY += 1.34;
+      if (node.baseY > 1.18) node.baseY -= 1.34;
+
+      const dxBias = state.biasX - node.baseX;
+      const dyBias = state.biasY - node.baseY;
+      const dBias = Math.hypot(dxBias, dyBias) + 1e-6;
+      const localBias = smoothstep(0.42, 0.0, dBias) * state.biasPower * (1.1 - plane.depth * 0.7);
+
+      let causalBoost = 0;
+      let clusterBoost = 0;
+
+      if (ev.active) {
+        const ox = ev.origin.x - node.baseX;
+        const oy = ev.origin.y - node.baseY;
+        const od = Math.hypot(ox, oy) + 1e-6;
+        const nearOrigin = smoothstep(0.34, 0.0, od);
+        causalBoost = nearOrigin * fieldDrive * (1.18 - plane.depth * 0.34);
+
+        if (clusterSet.has(node.id)) clusterBoost = 1;
+        else if (couplingSet.has(node.id)) clusterBoost = 0.52;
+      }
+
+      node.causal = causalBoost;
+      node.cluster = clusterBoost;
+
+      const biasMag = localBias * 0.0062;
+      const causalMag = causalBoost * 0.0074;
+
+      node.x = node.baseX
+        + (dxBias / dBias) * biasMag
+        + Math.sin(t * 0.53 + node.seed) * 0.0023
+        + Math.sin(t * 1.4 + node.seed * 0.22) * causalMag * 0.22;
+
+      node.y = node.baseY
+        + (dyBias / dBias) * biasMag
+        + Math.cos(t * 0.61 + node.seed) * 0.0023
+        + Math.cos(t * 1.18 + node.seed * 0.26) * causalMag * 0.22;
+
+      if (ev.active) {
+        const toOriginX = ev.origin.x - node.x;
+        const toOriginY = ev.origin.y - node.y;
+        const distOrigin = Math.hypot(toOriginX, toOriginY) + 1e-6;
+        node.x += (toOriginX / distOrigin) * causalMag * 0.46;
+        node.y += (toOriginY / distOrigin) * causalMag * 0.46;
+      }
+
+      node.tension = clamp(
+        0.35 + localBias * 0.9 + causalBoost * 0.64 + Math.sin(t + node.seed * 0.2) * 0.14,
+        0.12, 1.35
+      );
+
+      node.temp = clamp(
+        0.24 + localBias * 0.82 + causalBoost * 0.52 + (1 - plane.depth) * 0.12,
+        0.12, 1
+      );
+
+      const parallaxX = (state.mouseX - 0.5) * plane.parallax;
+      const parallaxY = (state.mouseY - 0.5) * plane.parallax;
+      node.px = (node.x + parallaxX) * state.chamberWidth;
+      node.py = (node.y + parallaxY) * state.h;
+      node.onScreen = node.px > -120 && node.px < state.chamberWidth + 120 && node.py > -120 && node.py < state.h + 120;
+    }
+  }
+
+  function weightedClusterSelection(cx, cy) {
+    const candidates = [];
+    for (const node of state.nodes) {
+      if (!node.onScreen) continue;
+      const nx = node.px / state.chamberWidth;
+      const ny = node.py / state.h;
+      const dx = nx - cx;
+      const dy = ny - cy;
+      const d = Math.hypot(dx, dy);
+      const centrality = 1 - clamp(d / 0.34, 0, 1);
+      const depthScore = 1 - Math.abs(node.depth - 0.60) * 0.9;
+      const admissibility = centrality * 0.52 + node.tension * 0.24 + depthScore * 0.14 + node.temp * 0.10;
+      if (admissibility > 0.34) {
+        candidates.push({ node, admissibility, distance: d });
+      }
+    }
+    candidates.sort((a, b) => b.admissibility - a.admissibility);
+    return candidates.slice(0, 12 + Math.floor(rand(0, 4)));
+  }
+
+  function buildInternalFacets(points, edges) {
+    const facets = [];
+    for (let i = 0; i < points.length; i++) {
+      for (let j = i + 1; j < points.length; j++) {
+        for (let k = j + 1; k < points.length; k++) {
+          const hasIJ = edges.some(e => (e.a === i && e.b === j) || (e.a === j && e.b === i));
+          const hasIK = edges.some(e => (e.a === i && e.b === k) || (e.a === k && e.b === i));
+          const hasJK = edges.some(e => (e.a === j && e.b === k) || (e.a === k && e.b === j));
+          if (!hasIJ || !hasIK || !hasJK) continue;
+
+          const A = points[i], B = points[j], C = points[k];
+          const ab = { x: B.x - A.x, y: B.y - A.y, z: B.z - A.z };
+          const ac = { x: C.x - A.x, y: C.y - A.y, z: C.z - A.z };
+          const normal = cross3D(ab, ac);
+          const area = Math.hypot(normal.x, normal.y, normal.z) * 0.5;
+          if (area > 240 && area < 5400) facets.push({ indices: [i, j, k], area, skin: false });
+        }
+      }
+    }
+    facets.sort((a, b) => a.area - b.area);
+    return facets.slice(0, 18);
+  }
+
+  function buildUnifiedSkin(points) {
+    const sectors = 8;
+    const allAngles = points.map((p, idx) => ({
+      idx,
+      ang: (Math.atan2(p.y, p.x) + TAU) % TAU,
+      r: Math.hypot(p.x, p.y),
+      z: p.z
+    }));
+
+    function selectRing(sign) {
+      const ring = [];
+      const sectorWidth = TAU / sectors;
+      for (let s = 0; s < sectors; s++) {
+        const center = (s + 0.5) * sectorWidth;
+        let bestIdx = -1;
+        let bestScore = -Infinity;
+
+        for (const item of allAngles) {
+          const p = points[item.idx];
+          const delta = angularDiff(item.ang, center);
+          const sectorFit = 1 - clamp(delta / (sectorWidth * 0.85), 0, 1);
+          const signScore = sign === 'front' ? p.z : -p.z;
+          const score = sectorFit * 140 + item.r * 0.72 + signScore * 0.62;
+          if (score > bestScore) {
+            bestScore = score;
+            bestIdx = item.idx;
+          }
+        }
+        if (bestIdx >= 0) ring.push(bestIdx);
+      }
+      return dedupeRing(ring);
+    }
+
+    let frontRing = selectRing('front');
+    let backRing = selectRing('back');
+
+    if (frontRing.length < 4 || backRing.length < 4) {
+      return { points: points.slice(), facets: [] };
+    }
+
+    const targetCount = Math.max(5, Math.min(8, Math.max(frontRing.length, backRing.length)));
+    frontRing = resampleRing(frontRing, targetCount);
+    backRing = resampleRing(backRing, targetCount);
+
+    const shellPoints = points.map(p => ({ ...p }));
+    const frontAvg = averageOfIndices(points, frontRing, 34);
+    const backAvg = averageOfIndices(points, backRing, -34);
+    const frontCenterIdx = shellPoints.push({ ...frontAvg, synthetic: true, shell: true }) - 1;
+    const backCenterIdx = shellPoints.push({ ...backAvg, synthetic: true, shell: true }) - 1;
+
+    const facets = [];
+    for (let i = 0; i < targetCount; i++) {
+      const ni = (i + 1) % targetCount;
+      const f0 = frontRing[i];
+      const f1 = frontRing[ni];
+      const b0 = backRing[i];
+      const b1 = backRing[ni];
+
+      if (f0 !== f1) facets.push({ indices: [frontCenterIdx, f0, f1], area: 0, skin: true });
+      if (b0 !== b1) facets.push({ indices: [backCenterIdx, b1, b0], area: 0, skin: true });
+      if (f0 !== b0 && f0 !== f1 && b0 !== f1) facets.push({ indices: [f0, b0, f1], area: 0, skin: true });
+      if (f1 !== b0 && f1 !== b1 && b0 !== b1) facets.push({ indices: [f1, b0, b1], area: 0, skin: true });
+    }
+
+    for (const facet of facets) {
+      const A = shellPoints[facet.indices[0]];
+      const B = shellPoints[facet.indices[1]];
+      const C = shellPoints[facet.indices[2]];
+      const ab = { x: B.x - A.x, y: B.y - A.y, z: B.z - A.z };
+      const ac = { x: C.x - A.x, y: C.y - A.y, z: C.z - A.z };
+      const normal = cross3D(ab, ac);
+      facet.area = Math.hypot(normal.x, normal.y, normal.z) * 0.5;
+    }
+
+    return {
+      points: shellPoints,
+      facets: facets.filter(f => f.area > 160 && f.area < 18000)
+    };
+  }
+
+  function buildSpecimenFromCluster(selected) {
+    if (selected.length < 6) return null;
+
+    const centroid = selected.reduce((acc, item) => {
+      acc.x += item.node.px;
+      acc.y += item.node.py;
+      acc.z += (item.node.depth - 0.60) * 380;
+      return acc;
+    }, { x: 0, y: 0, z: 0 });
+
+    centroid.x /= selected.length;
+    centroid.y /= selected.length;
+    centroid.z /= selected.length;
+
+    const points = [];
+    for (const item of selected) {
+      const n = item.node;
+      const px = n.px - centroid.x;
+      const py = n.py - centroid.y;
+      const pz = (n.depth - 0.60) * 400 + (n.temp - 0.5) * 46;
+      points.push({
+        x: px * 0.72,
+        y: py * 0.72,
+        z: pz,
+        sourceId: n.id,
+        heat: n.temp,
+        plane: n.planeIndex,
+        synthetic: false
+      });
+    }
+
+    const edges = [];
+    for (let i = 0; i < points.length; i++) {
+      for (let j = i + 1; j < points.length; j++) {
+        const a = points[i], b = points[j];
+        const dxy = Math.hypot(a.x - b.x, a.y - b.y);
+        const dz = Math.abs(a.z - b.z);
+        const thermal = Math.abs(a.heat - b.heat);
+        const score = dxy * 0.58 + dz * 0.42 + thermal * 42;
+        if (score < 150) edges.push({ a: i, b: j, weight: score });
+      }
+    }
+
+    edges.sort((a, b) => a.weight - b.weight);
+    const degree = new Array(points.length).fill(0);
+    const keptEdges = [];
+
+    for (const e of edges) {
+      if (degree[e.a] >= 4 || degree[e.b] >= 4) continue;
+      if (keptEdges.length > points.length * 1.7) break;
+      keptEdges.push(e);
+      degree[e.a]++;
+      degree[e.b]++;
+    }
+
+    const internalFacets = buildInternalFacets(points, keptEdges);
+    const skin = buildUnifiedSkin(points);
+    const specimenPoints = skin.points.length ? skin.points : points;
+    const facets = skin.facets.length >= 12 ? skin.facets : internalFacets;
+
+    return {
+      id: `specimen-${state.event.idCounter++}`,
+      sourceCenter: { x: centroid.x, y: centroid.y, z: centroid.z },
+      points: specimenPoints,
+      edges: keptEdges,
+      facets,
+      rotation: { x: rand(-0.55, 0.55), y: rand(-0.75, 0.75), z: rand(-0.36, 0.36) },
+      scale: 1,
+      renderMode: state.renderMode,
+      phaseCaptured: state.event.phase,
+      createdAt: performance.now(),
+      residualStrength: 1,
+      slotIndex: null,
+      exportReady: true,
+      skinUnified: skin.facets.length >= 12
+    };
+  }
+
+  function triggerEvent(forceX, forceY) {
+    if (state.event.active || state.inspect) return;
+
+    const cx = forceX ?? clamp(state.biasX + rand(-0.08, 0.08), 0.18, 0.78);
+    const cy = forceY ?? clamp(state.biasY + rand(-0.07, 0.07), 0.2, 0.82);
+    const selection = weightedClusterSelection(cx, cy);
+    const specimen = buildSpecimenFromCluster(selection);
+    if (!specimen) return;
+
+    const sortedCoupling = state.nodes
+      .map(node => {
+        const dx = node.px / state.chamberWidth - cx;
+        const dy = node.py / state.h - cy;
+        return { node, d: Math.hypot(dx, dy) - node.tension * 0.05 };
+      })
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 18);
+
+    state.event.active = true;
+    state.event.phase = 'ignition';
+    state.event.age = 0;
+    state.event.origin = { x: cx, y: cy };
+    state.event.center3D = { x: specimen.sourceCenter.x, y: specimen.sourceCenter.y, z: 0 };
+    state.event.clusterIds = selection.map(s => s.node.id);
+    state.event.couplingIds = sortedCoupling.map(s => s.node.id);
+    state.event.skeleton = specimen.edges;
+    state.event.boundary = specimen.facets;
+    state.event.specimen = specimen;
+    state.event.stressed = 0;
+    state.event.holdStrength = 0;
+    state.event.nextTrigger = state.event.duration + state.event.cooldown;
+
+    admissibilityLabel.textContent = specimen.skinUnified ? 'weighted skin' : 'weighted';
+    couplingLabel.textContent = 'forming';
+  }
+
+  function updateEvent(dt) {
+    const ev = state.event;
+
+    if (!ev.active) {
+      ev.nextTrigger -= dt;
+      if (ev.nextTrigger <= 0 && !state.inspect) triggerEvent();
+      phaseLabel.textContent = 'latency';
+      specimenLabel.textContent = 'none';
+      couplingLabel.textContent = 'idle';
+      return;
+    }
+
+    ev.age += dt;
+    const t = ev.age / ev.duration;
+
+    if (t < 0.10) ev.phase = 'ignition';
+    else if (t < 0.28) ev.phase = 'condensation';
+    else if (t < 0.48) ev.phase = 'articulation';
+    else if (t < 0.70) ev.phase = 'holding';
+    else if (t < 0.84) ev.phase = 'stressed';
+    else if (t < 0.94) ev.phase = 'collapsing';
+    else ev.phase = 'residual';
+
+    couplingLabel.textContent =
+      ev.phase === 'ignition' || ev.phase === 'condensation' ? 'forming' :
+      ev.phase === 'articulation' || ev.phase === 'holding' ? 'locked' :
+      ev.phase === 'stressed' ? 'stressed' :
+      ev.phase === 'collapsing' || ev.phase === 'residual' ? 'decaying' : 'idle';
+
+    phaseLabel.textContent = ev.phase;
+    specimenLabel.textContent = ev.specimen ? ev.specimen.id.replace('specimen-', '#') : 'none';
+
+    if (ev.specimen) {
+      const rotSpeed = ev.phase === 'holding' ? 0.14 : ev.phase === 'stressed' ? 0.23 : 0.08;
+      ev.specimen.rotation.y += dt * rotSpeed;
+      ev.specimen.rotation.x += dt * 0.05;
+      if (ev.phase === 'stressed') ev.stressed = smoothstep(0.70, 0.84, t);
+      if (ev.phase === 'holding') ev.holdStrength = smoothstep(0.48, 0.70, t);
+      if (ev.phase === 'collapsing') ev.specimen.residualStrength = 1 - smoothstep(0.84, 0.96, t);
+    }
+
+    if (t >= 1) {
+      if (ev.specimen) {
+        ev.residual.push({ specimen: cloneSpecimen(ev.specimen), age: 0, ttl: 7.5 });
+      }
+      ev.active = false;
+      ev.phase = 'latency';
+      ev.age = 0;
+      ev.specimen = null;
+      ev.clusterIds = [];
+      ev.couplingIds = [];
+      ev.skeleton = [];
+      ev.boundary = [];
+      ev.stressed = 0;
+      ev.holdStrength = 0;
+      ev.nextTrigger = rand(3.6, 6.0);
+      admissibilityLabel.textContent = 'weighted';
+      couplingLabel.textContent = 'idle';
+    }
+
+    ev.residual = ev.residual.filter(r => {
+      r.age += dt;
+      return r.age < r.ttl;
+    });
+  }
+
+  function cloneSpecimen(specimen) {
+    return {
+      id: specimen.id,
+      sourceCenter: { ...specimen.sourceCenter },
+      points: specimen.points.map(p => ({ ...p })),
+      edges: specimen.edges.map(e => ({ ...e })),
+      facets: specimen.facets.map(f => ({ indices: [...f.indices], area: f.area, skin: !!f.skin })),
+      rotation: { ...specimen.rotation },
+      scale: specimen.scale,
+      renderMode: specimen.renderMode,
+      phaseCaptured: specimen.phaseCaptured,
+      createdAt: specimen.createdAt,
+      residualStrength: specimen.residualStrength,
+      slotIndex: specimen.slotIndex,
+      exportReady: specimen.exportReady,
+      skinUnified: specimen.skinUnified
+    };
+  }
+
+  function setInspect(specimen, slotIndex = -1) {
+    state.inspect = true;
+    state.currentSpecimen = cloneSpecimen(specimen);
+    state.currentSpecimen.slotIndex = slotIndex;
+    state.selectedSlot = slotIndex;
+    state.renderMode = state.currentSpecimen.renderMode || state.renderMode;
+    modeLabel.textContent = state.renderMode;
+    updateSlotsUI();
+  }
+
+  function exitInspect() {
+    state.inspect = false;
+    state.currentSpecimen = null;
+    state.selectedSlot = -1;
+    updateSlotsUI();
+  }
+
+  function archiveCurrentSpecimen() {
+    const source = state.currentSpecimen || state.event.specimen;
+    if (!source) return;
+    let index = state.archive.findIndex(slot => slot === null);
+    if (index === -1) index = 0;
+    const archived = cloneSpecimen(source);
+    archived.slotIndex = index;
+    archived.renderMode = state.renderMode;
+    state.archive[index] = archived;
+    renderSlot(index);
+    updateArchiveCount();
+    updateSlotsUI();
+  }
+
+  function updateArchiveCount() {
+    const filled = state.archive.filter(Boolean).length;
+    archiveCount.textContent = `${filled} / ${slotCount}`;
+  }
+
+  function createSlots() {
+    if (slotViews.length) return;
+
+    for (let i = 0; i < slotCount; i++) {
+      const slot = document.createElement('button');
+      slot.className = 'slot empty';
+      slot.type = 'button';
+      slot.dataset.index = i;
+      slot.innerHTML = `
+        <span class="slot-badge">slot ${String(i + 1).padStart(2, '0')}</span>
+        <canvas></canvas>
+        <div class="slot-meta"><span>vacant</span><span>--</span></div>
+      `;
+      const miniCanvas = slot.querySelector('canvas');
+      miniCanvas.width = 120 * DPR;
+      miniCanvas.height = 108 * DPR;
+      miniCanvas.style.width = '100%';
+      miniCanvas.style.height = '100%';
+
+      slot.addEventListener('click', () => {
+        const specimen = state.archive[i];
+        if (!specimen) return;
+        setInspect(specimen, i);
+      });
+
+      slotsRoot.appendChild(slot);
+      slotViews.push({ slot, miniCanvas, miniCtx: miniCanvas.getContext('2d') });
+    }
+
+    updateSlotsUI();
+    updateArchiveCount();
+  }
+
+  function updateSlotsUI() {
+    slotViews.forEach((view, i) => {
+      const occupied = !!state.archive[i];
+      view.slot.classList.toggle('empty', !occupied);
+      view.slot.classList.toggle('active', state.selectedSlot === i);
+    });
+  }
+
+  function renderSlot(index) {
+    const specimen = state.archive[index];
+    const view = slotViews[index];
+    if (!view) return;
+
+    const mctx = view.miniCtx;
+    const w = view.miniCanvas.width / DPR;
+    const h = view.miniCanvas.height / DPR;
+    mctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    mctx.clearRect(0, 0, w, h);
+    if (!specimen) return;
+
+    const tempRotation = { ...specimen.rotation, y: specimen.rotation.y + 0.35, x: specimen.rotation.x + 0.2 };
+    const projected = buildProjectedSpecimen(specimen, tempRotation, w * 0.5, h * 0.44, 0.48, 520, 2.2);
+    drawSpecimenGeometry(mctx, projected, specimen.renderMode === 'shade', 0.95, 0.84, 0.94, 0.96, true);
+
+    const meta = view.slot.querySelector('.slot-meta');
+    meta.innerHTML = `<span>${specimen.renderMode}</span><span>${specimen.id.replace('specimen-', '#')}</span>`;
+  }
+
+  function getNodeById(id) {
+    return state.nodeMap.get(id) || null;
+  }
+
+  function drawBackground() {
+    ctx.clearRect(0, 0, state.w, state.h);
+    const grad = ctx.createLinearGradient(0, 0, 0, state.h);
+    grad.addColorStop(0, 'rgba(8, 11, 15, 0.9)');
+    grad.addColorStop(1, 'rgba(4, 5, 7, 0.95)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, state.chamberWidth, state.h);
+
+    drawFieldSurfaces();
+    drawFieldLinks();
+    drawFieldCurrents();
+    drawFieldNodes();
+    drawCausalHalo();
+    drawCausalFilaments();
+
+    ctx.strokeStyle = 'rgba(185, 208, 228, 0.08)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(10, 10, state.chamberWidth - 20, state.h - 20);
+  }
+
+  function drawFieldSurfaces() {
+    for (const tri of state.fieldTriangles) {
+      const a = getNodeById(tri[0]);
+      const b = getNodeById(tri[1]);
+      const c = getNodeById(tri[2]);
+      if (!a || !b || !c || !a.onScreen || !b.onScreen || !c.onScreen) continue;
+
+      const tension = (a.tension + b.tension + c.tension) / 3;
+      const heat = (a.temp + b.temp + c.temp) / 3;
+      const planeFactor = 1 - Math.abs(a.depth - 0.60) * 0.9;
+      const causal = Math.max(a.causal, b.causal, c.causal);
+      const alpha = 0.018 + tension * 0.018 + heat * 0.014 + planeFactor * 0.008 + causal * 0.072;
+
+      ctx.beginPath();
+      ctx.moveTo(a.px, a.py);
+      ctx.lineTo(b.px, b.py);
+      ctx.lineTo(c.px, c.py);
+      ctx.closePath();
+      ctx.fillStyle = causal > 0.12
+        ? `rgba(88, 128, 186, ${alpha})`
+        : `rgba(116, 154, 192, ${alpha})`;
+      ctx.fill();
+    }
+  }
+
+  function drawFieldLinks() {
+    for (const link of state.fieldLinks) {
+      const a = getNodeById(link.a);
+      const b = getNodeById(link.b);
+      if (!a || !b || !a.onScreen || !b.onScreen) continue;
+
+      const d = Math.hypot(a.px - b.px, a.py - b.py);
+      const tension = (a.tension + b.tension) * 0.5;
+      const heat = (a.temp + b.temp) * 0.5;
+      const causal = Math.max(a.causal, b.causal);
+      const cluster = Math.max(a.cluster, b.cluster);
+      const atten = link.type === 'cross' ? 0.72 : 1;
+      const alpha = clamp(
+        (0.08 + tension * 0.16 + heat * 0.08 + causal * 0.26 + cluster * 0.12) * atten * (1 - d / 240),
+        0.02, 0.46
+      );
+
+      ctx.strokeStyle = link.type === 'cross'
+        ? `rgba(126, 182, 236, ${alpha * (0.88 + causal * 0.5)})`
+        : `rgba(255, 170, 96, ${alpha})`;
+
+      ctx.lineWidth = link.type === 'cross'
+        ? 0.72 + causal * 0.9
+        : 0.96 + causal * 0.66 + cluster * 0.26;
+
+      ctx.beginPath();
+      ctx.moveTo(a.px, a.py);
+      ctx.lineTo(b.px, b.py);
+      ctx.stroke();
+    }
+  }
+
+  function drawFieldCurrents() {
+    const currents = 6;
+    const ev = state.event;
+    const phaseT = ev.active ? clamp(ev.age / ev.duration, 0, 1) : 0;
+    const force = ev.active ? smoothstep(0.0, 0.34, phaseT) * (1 - smoothstep(0.82, 1.0, phaseT)) : 0;
+
+    for (let i = 0; i < currents; i++) {
+      const yBase = state.h * (0.12 + i * 0.13);
+      const phase = state.time * (0.06 + i * 0.012) + i * 1.27;
+
+      ctx.beginPath();
+      for (let x = 0; x <= state.chamberWidth; x += 24) {
+        const nx = x / state.chamberWidth;
+        const wave = Math.sin(nx * 8.5 + phase) * 8 + Math.cos(nx * 3.2 + phase * 1.3) * 5;
+
+        let causalWave = 0;
+        if (ev.active) {
+          const dx = nx - ev.origin.x;
+          causalWave = Math.exp(-(dx * dx) / 0.022) * Math.sin(phase * 2.1 + nx * 14) * 18 * force;
+        }
+
+        const mouseBias = (state.biasY - 0.5) * 34 * Math.exp(-Math.pow(nx - state.biasX, 2) / 0.06);
+        const y = yBase + wave + mouseBias + causalWave;
+
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+
+      ctx.strokeStyle = ev.active
+        ? `rgba(132, 180, 228, ${0.036 + i * 0.004 + force * 0.024})`
+        : `rgba(120, 160, 198, ${0.034 + i * 0.004})`;
+
+      ctx.lineWidth = 0.8 + force * 0.16;
+      ctx.stroke();
+    }
+  }
+
+  function drawFieldNodes() {
+    for (const node of state.nodes) {
+      if (!node.onScreen) continue;
+
+      const plane = state.planes[node.planeIndex];
+      const r = plane.radius * (1.08 - Math.min(state.time * 0.0014, 0.22)) + node.tension * 0.12 + node.causal * 0.74;
+      ctx.beginPath();
+      ctx.arc(node.px, node.py, Math.max(0.5, r), 0, TAU);
+
+      const alpha = 0.50 + node.temp * 0.16 + node.causal * 0.22 + node.cluster * 0.16;
+      ctx.fillStyle = node.cluster > 0.8
+        ? `rgba(208, 234, 255, ${clamp(alpha, 0, 1)})`
+        : `rgba(172, 223, 255, ${clamp(alpha, 0, 1)})`;
+      ctx.fill();
+    }
+  }
+
+  function drawCausalHalo() {
+    const ev = state.event;
+    if (!ev.active) return;
+
+    const t = clamp(ev.age / ev.duration, 0, 1);
+    const force = t < 0.4 ? smoothstep(0.0, 0.4, t) : 1 - smoothstep(0.74, 1.0, t);
+    const x = ev.origin.x * state.chamberWidth;
+    const y = ev.origin.y * state.h;
+
+    ctx.save();
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 170 + force * 80);
+    g.addColorStop(0, `rgba(255, 188, 116, ${0.08 + force * 0.06})`);
+    g.addColorStop(0.45, `rgba(122, 176, 232, ${0.05 + force * 0.05})`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, 170 + force * 80, 0, TAU);
+    ctx.fill();
+
+    const rings = 2;
+    for (let i = 0; i < rings; i++) {
+      const r = 48 + i * 32 + force * 36;
+      ctx.strokeStyle = `rgba(255, 196, 126, ${0.05 + force * 0.08 - i * 0.018})`;
+      ctx.lineWidth = 1 + force * 0.4;
+      ctx.setLineDash([5 + i * 2, 9 + i * 2]);
+      ctx.beginPath();
+      ctx.ellipse(x, y, r, r * 0.72, Math.sin(state.time * 0.12 + i) * 0.18, 0, TAU);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawCausalFilaments() {
+    const ev = state.event;
+    if (!ev.active || !ev.specimen) return;
+
+    const t = clamp(ev.age / ev.duration, 0, 1);
+    const force = t < 0.52 ? smoothstep(0.0, 0.52, t) : 1 - smoothstep(0.72, 0.94, t);
+    if (force <= 0.01) return;
+
+    const centerX = ev.specimen.sourceCenter.x;
+    const centerY = ev.specimen.sourceCenter.y;
+
+    const nodeList = ev.couplingIds
+      .map(getNodeById)
+      .filter(Boolean)
+      .filter(n => n.onScreen);
+
+    const targetPts = ev.specimen.points
+      .filter(p => !p.synthetic)
+      .slice(0, 8)
+      .map(p => ({
+        x: centerX + p.x * 0.34,
+        y: centerY + p.y * 0.34
+      }));
+
+    ctx.save();
+    for (let i = 0; i < Math.min(nodeList.length, targetPts.length); i++) {
+      const n = nodeList[i];
+      const tp = targetPts[i % targetPts.length];
+      const mx = (n.px + tp.x) * 0.5;
+      const my = (n.py + tp.y) * 0.5 - 18 * force;
+
+      ctx.strokeStyle = `rgba(255, 190, 118, ${0.08 + force * 0.18})`;
+      ctx.lineWidth = 0.7 + force * 0.8;
+      ctx.beginPath();
+      ctx.moveTo(n.px, n.py);
+      ctx.quadraticCurveTo(mx, my, tp.x, tp.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawResiduals() {
+    for (const residual of state.event.residual) {
+      drawSpecimen(residual.specimen, {
+        centerX: residual.specimen.sourceCenter.x,
+        centerY: residual.specimen.sourceCenter.y,
+        scale: 0.72,
+        alpha: 0.18 * (1 - residual.age / residual.ttl),
+        wireAlpha: 0.22 * (1 - residual.age / residual.ttl),
+        pointAlpha: 0.34 * (1 - residual.age / residual.ttl),
+        shaded: false,
+        spinning: false
+      });
+    }
+  }
+
+  function drawEventBoundary(specimen, phaseT) {
+    if (!specimen) return;
+    const cx = specimen.sourceCenter.x;
+    const cy = specimen.sourceCenter.y;
+    const radius = 74 + smoothstep(0.05, 0.45, phaseT) * 56;
+    const collapse = phaseT > 0.84 ? 1 - smoothstep(0.84, 1.0, phaseT) : 1;
+
+    ctx.save();
+    ctx.strokeStyle = `rgba(255, 190, 120, ${0.18 * collapse})`;
+    ctx.lineWidth = 1.1;
+    ctx.setLineDash([4, 8]);
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, radius, radius * 0.68, Math.sin(state.time * 0.09) * 0.1, 0, TAU);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function buildProjectedSpecimen(specimen, rotation, centerX, centerY, scale, perspective, camZ) {
+    const rotatedPoints = specimen.points.map(p => rotate3D(p, rotation));
+    const projected = rotatedPoints.map(p => projectToScreen(p, {
+      cx: centerX,
+      cy: centerY,
+      scale,
+      perspective,
+      camZ
+    }));
+    return { rotatedPoints, projected, specimen };
+  }
+
+  function drawSpecimenGeometry(targetCtx, built, shaded, alpha, wireAlpha, pointAlpha, facetAlphaBoost, mini = false) {
+    const { specimen, rotatedPoints, projected } = built;
+
+    if (shaded && specimen.facets.length) {
+      const sorted = specimen.facets.map(f => {
+        const pa = rotatedPoints[f.indices[0]];
+        const pb = rotatedPoints[f.indices[1]];
+        const pc = rotatedPoints[f.indices[2]];
+        const ab = { x: pb.x - pa.x, y: pb.y - pa.y, z: pb.z - pa.z };
+        const ac = { x: pc.x - pa.x, y: pc.y - pa.y, z: pc.z - pa.z };
+        const normal = normalize3D(cross3D(ab, ac));
+        const depth = (pa.z + pb.z + pc.z) / 3;
+        const light = clamp(dot3D(normal, FACE_LIGHT) * 0.5 + 0.5, 0, 1);
+        const facing = clamp(normal.z * 0.45 + 0.62, 0.22, 1);
+        return {
+          facet: f,
+          pts: f.indices.map(idx => projected[idx]),
+          depth,
+          light,
+          facing
+        };
+      }).sort((a, b) => a.depth - b.depth);
+
+      for (const item of sorted) {
+        const skinBoost = item.facet.skin ? 1.18 : 0.94;
+        const base = mini ? 0.09 : 0.11;
+        const bright = base + item.light * (mini ? 0.19 : 0.28);
+        const warm = 174 + Math.round(item.light * 44);
+        const fillAlpha = bright * alpha * facetAlphaBoost * skinBoost * item.facing;
+
+        targetCtx.beginPath();
+        targetCtx.moveTo(item.pts[0].x, item.pts[0].y);
+        targetCtx.lineTo(item.pts[1].x, item.pts[1].y);
+        targetCtx.lineTo(item.pts[2].x, item.pts[2].y);
+        targetCtx.closePath();
+        targetCtx.fillStyle = `rgba(255, ${warm}, 122, ${fillAlpha})`;
+        targetCtx.fill();
+
+        targetCtx.strokeStyle = `rgba(255, 214, 156, ${0.07 * alpha * item.facing})`;
+        targetCtx.lineWidth = mini ? 0.5 : 0.64;
+        targetCtx.stroke();
+      }
+    }
+
+    targetCtx.strokeStyle = `rgba(255, 182, 108, ${wireAlpha * alpha})`;
+    targetCtx.lineWidth = mini ? 0.92 : 1.24;
+    for (const e of specimen.edges) {
+      const a = projected[e.a];
+      const b = projected[e.b];
+      if (!a || !b) continue;
+      targetCtx.beginPath();
+      targetCtx.moveTo(a.x, a.y);
+      targetCtx.lineTo(b.x, b.y);
+      targetCtx.stroke();
+    }
+
+    for (let i = 0; i < projected.length; i++) {
+      const p = projected[i];
+      const source = specimen.points[i];
+      const radius = source.synthetic ? 0 : (mini ? 1.02 : 1.44);
+      if (radius <= 0) continue;
+
+      targetCtx.beginPath();
+      targetCtx.arc(p.x, p.y, radius, 0, TAU);
+      targetCtx.fillStyle = `rgba(178, 226, 255, ${pointAlpha * alpha})`;
+      targetCtx.fill();
+    }
+  }
+
+  function drawSpecimen(specimen, opts = {}) {
+    if (!specimen) return;
+
+    const centerX = opts.centerX ?? specimen.sourceCenter.x;
+    const centerY = opts.centerY ?? specimen.sourceCenter.y;
+    const shaded = opts.shaded ?? (state.renderMode === 'shade');
+    const alpha = opts.alpha ?? 1;
+    const wireAlpha = opts.wireAlpha ?? 0.82;
+    const pointAlpha = opts.pointAlpha ?? 0.92;
+    const spinning = opts.spinning ?? true;
+    const scale = opts.scale ?? 1;
+
+    const rotation = spinning
+      ? { x: specimen.rotation.x, y: specimen.rotation.y, z: specimen.rotation.z }
+      : specimen.rotation;
+
+    const built = buildProjectedSpecimen(specimen, rotation, centerX, centerY, scale, 760, 2.4);
+    drawSpecimenGeometry(ctx, built, shaded, alpha, wireAlpha, pointAlpha, 1, false);
+  }
+
+  function drawCurrentEvent() {
+    const ev = state.event;
+    if (!ev.active || !ev.specimen) return;
+
+    const t = clamp(ev.age / ev.duration, 0, 1);
+    drawEventBoundary(ev.specimen, t);
+
+    const phaseScale = t < 0.28
+      ? lerp(0.18, 0.86, easeOutQuint(smoothstep(0.02, 0.28, t)))
+      : t < 0.48
+      ? lerp(0.86, 1.04, smoothstep(0.28, 0.48, t))
+      : t < 0.84
+      ? lerp(1.04, 1.08, smoothstep(0.48, 0.84, t))
+      : lerp(1.08, 0.82, smoothstep(0.84, 1.0, t));
+
+    const alpha = t < 0.1 ? smoothstep(0.0, 0.1, t) : t > 0.94 ? 1 - smoothstep(0.94, 1.0, t) : 1;
+
+    drawSpecimen(ev.specimen, {
+      scale: phaseScale,
+      alpha,
+      wireAlpha: 0.94,
+      pointAlpha: 0.96,
+      shaded: state.renderMode === 'shade'
+    });
+  }
+
+  function drawInspectView() {
+    if (!state.inspect || !state.currentSpecimen) return;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(4, 6, 8, 0.56)';
+    ctx.fillRect(0, 0, state.chamberWidth, state.h);
+    ctx.restore();
+
+    state.currentSpecimen.rotation.y += 0.008;
+    state.currentSpecimen.rotation.x += 0.0024;
+    state.currentSpecimen.renderMode = state.renderMode;
+
+    drawSpecimen(state.currentSpecimen, {
+      centerX: state.chamberWidth * 0.5,
+      centerY: state.h * 0.5,
+      scale: 1.85,
+      alpha: 1,
+      wireAlpha: 0.97,
+      pointAlpha: 0.98,
+      shaded: state.renderMode === 'shade'
+    });
+
+    ctx.fillStyle = 'rgba(224, 236, 246, 0.88)';
+    ctx.font = '12px Inter, system-ui, sans-serif';
+    ctx.fillText('INSPECT MODE', 26, state.h - 56);
+    ctx.fillStyle = 'rgba(168, 188, 206, 0.86)';
+    ctx.fillText('A archive   |   W wire   |   S shade   |   Esc close', 26, state.h - 34);
+  }
+
+  function drawDivider() {
+    ctx.save();
+    const x = state.chamberWidth;
+    const g = ctx.createLinearGradient(x - 20, 0, x + 14, 0);
+    g.addColorStop(0, 'rgba(255, 179, 96, 0)');
+    g.addColorStop(0.48, 'rgba(255, 179, 96, 0.14)');
+    g.addColorStop(1, 'rgba(120, 160, 198, 0.02)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - 20, 0, 34, state.h);
+    ctx.restore();
+  }
+
+  function frame(now) {
+    const dt = Math.min(0.033, (now - state.lastTime) / 1000);
+    state.lastTime = now;
+    state.time += dt;
+
+    updateField(dt);
+    updateEvent(dt);
+
+    drawBackground();
+    drawResiduals();
+    if (!state.inspect) drawCurrentEvent();
+    drawDivider();
+    if (state.inspect) drawInspectView();
+
+    modeLabel.textContent = state.renderMode;
+    requestAnimationFrame(frame);
+  }
+
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    state.mouseX = clamp(e.clientX / rect.width, 0, 1);
+    state.mouseY = clamp(e.clientY / rect.height, 0, 1);
+  });
+
+  canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX / rect.width;
+    const y = e.clientY / rect.height;
+    if (e.clientX > state.chamberWidth) return;
+
+    state.biasX = clamp(x, 0.06, 0.9);
+    state.biasY = clamp(y, 0.08, 0.92);
+    state.biasPower = 1;
+
+    if (!state.event.active && !state.inspect) {
+      triggerEvent(state.biasX, state.biasY);
+    }
+  });
+
+  window.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+
+    if (key === 'w') {
+      state.renderMode = 'wire';
+      if (state.currentSpecimen) state.currentSpecimen.renderMode = 'wire';
+      if (state.selectedSlot >= 0 && state.archive[state.selectedSlot]) {
+        state.archive[state.selectedSlot].renderMode = 'wire';
+        renderSlot(state.selectedSlot);
+      }
+    } else if (key === 's') {
+      state.renderMode = 'shade';
+      if (state.currentSpecimen) state.currentSpecimen.renderMode = 'shade';
+      if (state.selectedSlot >= 0 && state.archive[state.selectedSlot]) {
+        state.archive[state.selectedSlot].renderMode = 'shade';
+        renderSlot(state.selectedSlot);
+      }
+    } else if (key === 'i') {
+      if (state.event.specimen && !state.inspect) setInspect(state.event.specimen, -1);
+    } else if (key === 'a') {
+      archiveCurrentSpecimen();
+    } else if (key === 'escape') {
+      exitInspect();
+    }
+  });
+
+  window.addEventListener('resize', resize);
+
+  buildField();
+  resize();
+  requestAnimationFrame((t) => {
+    state.lastTime = t;
+    requestAnimationFrame(frame);
+  });
+})();
+</script>
+</body>
+</html>
