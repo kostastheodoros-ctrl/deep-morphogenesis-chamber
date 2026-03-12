@@ -2,7 +2,7 @@
 <html lang="el">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Deep Morphogenesis Chamber v2.2</title>
   <style>
     :root {
@@ -10,9 +10,13 @@
       --panel-border: rgba(180, 210, 235, 0.12);
       --text: rgba(223, 235, 245, 0.92);
       --muted: rgba(160, 184, 204, 0.68);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
     }
 
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
     html, body {
       margin: 0;
@@ -22,6 +26,7 @@
       background: radial-gradient(circle at 35% 28%, #101720 0%, #090d12 40%, #050709 100%);
       color: var(--text);
       font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      touch-action: manipulation;
     }
 
     #app {
@@ -45,7 +50,7 @@
 
     .hud {
       position: absolute;
-      inset: 18px 296px auto 18px;
+      inset: calc(18px + var(--safe-top)) calc(296px + var(--safe-right)) auto calc(18px + var(--safe-left));
       display: flex;
       justify-content: space-between;
       gap: 18px;
@@ -67,7 +72,7 @@
     }
 
     .status h1, .archive h2 {
-      margin: 0 0 6px;
+      margin: 0 0 6px 0;
       font-size: 13px;
       font-weight: 600;
       letter-spacing: 0.12em;
@@ -100,14 +105,22 @@
 
     .archive {
       position: absolute;
-      top: 18px;
-      right: 18px;
-      bottom: 18px;
+      top: calc(18px + var(--safe-top));
+      right: calc(18px + var(--safe-right));
+      bottom: calc(18px + var(--safe-bottom));
       width: 260px;
       padding: 12px;
       z-index: 6;
       display: flex;
       flex-direction: column;
+      gap: 10px;
+      transition: transform 180ms ease, opacity 180ms ease;
+    }
+
+    .archive-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
       gap: 10px;
     }
 
@@ -123,6 +136,7 @@
       grid-template-columns: 1fr 1fr;
       gap: 8px;
       flex: 1;
+      min-height: 0;
     }
 
     .slot {
@@ -134,6 +148,7 @@
       overflow: hidden;
       min-height: 108px;
       transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+      appearance: none;
     }
 
     .slot:hover {
@@ -194,8 +209,8 @@
 
     .center-label {
       position: absolute;
-      left: 20px;
-      bottom: 18px;
+      left: calc(20px + var(--safe-left));
+      bottom: calc(18px + var(--safe-bottom));
       font-size: 11px;
       color: var(--muted);
       z-index: 5;
@@ -205,6 +220,137 @@
     }
 
     .center-label strong { color: var(--text); }
+
+    .mobile-archive-toggle {
+      display: none;
+      position: absolute;
+      right: calc(14px + var(--safe-right));
+      bottom: calc(14px + var(--safe-bottom));
+      z-index: 9;
+      border: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, #17232d, #0d151c);
+      color: #eaf1f7;
+      border-radius: 999px;
+      padding: 11px 15px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      box-shadow: 0 10px 24px rgba(0,0,0,.28);
+    }
+
+    .mobile-archive-toggle:active {
+      transform: translateY(1px);
+    }
+
+    @media (max-width: 900px) {
+      .hud {
+        inset: calc(10px + var(--safe-top)) calc(10px + var(--safe-right)) auto calc(10px + var(--safe-left));
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .status, .help {
+        min-width: 0;
+        width: 100%;
+      }
+
+      .status {
+        padding: 10px 12px;
+      }
+
+      .status h1 {
+        font-size: 11px;
+        letter-spacing: .12em;
+      }
+
+      .status-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px 10px;
+        font-size: 10px;
+      }
+
+      .help {
+        padding: 9px 12px;
+        font-size: 10px;
+        line-height: 1.35;
+        max-width: none;
+      }
+
+      .center-label {
+        display: none;
+      }
+
+      .archive {
+        top: auto;
+        left: calc(10px + var(--safe-left));
+        right: calc(10px + var(--safe-right));
+        bottom: calc(10px + var(--safe-bottom));
+        width: auto;
+        max-height: min(42vh, 360px);
+        padding: 10px;
+        border-radius: 18px;
+        overflow: hidden;
+      }
+
+      .archive.collapsed {
+        transform: translateY(calc(100% - 52px));
+      }
+
+      .archive h2 {
+        font-size: 11px;
+        margin-bottom: 4px;
+      }
+
+      .archive p {
+        font-size: 10px;
+        line-height: 1.3;
+      }
+
+      .slots {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+        overflow: auto;
+        padding-bottom: 2px;
+      }
+
+      .slot {
+        min-height: 88px;
+      }
+
+      .slot-badge, .slot-meta {
+        font-size: 8px;
+      }
+
+      .mobile-archive-toggle {
+        display: inline-block;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .hud {
+        inset: calc(8px + var(--safe-top)) calc(8px + var(--safe-right)) auto calc(8px + var(--safe-left));
+      }
+
+      .status-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .archive {
+        left: calc(8px + var(--safe-left));
+        right: calc(8px + var(--safe-right));
+        bottom: calc(8px + var(--safe-bottom));
+        max-height: min(48vh, 380px);
+      }
+
+      .slots {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .slot {
+        min-height: 98px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -225,22 +371,26 @@
         <span>field role <strong>causal</strong></span>
       </div>
     </div>
+
     <div class="panel help">
-      <strong>Click</strong> field for local bias / trigger support.<br>
-      <strong>I</strong> inspect current specimen.<br>
-      <strong>A</strong> archive inspected specimen.<br>
-      <strong>W</strong> wire mode, <strong>S</strong> shade mode.<br>
-      Click a slot to reopen the stored specimen.
+      <strong>Tap / Click</strong> field for local bias.<br>
+      <strong>I</strong> inspect, <strong>A</strong> archive.<br>
+      <strong>W</strong> wire, <strong>S</strong> shade.<br>
+      Open archive panel to reopen stored specimens.
     </div>
   </div>
 
-  <aside class="panel archive">
-    <div>
-      <h2>Specimen Archive</h2>
-      <p>Persistent containers for detached event bodies. Slots retain geometry, rotation, scale, render mode, unified skin, and reopen state.</p>
+  <aside class="panel archive" id="archivePanel">
+    <div class="archive-header">
+      <div>
+        <h2>Specimen Archive</h2>
+        <p>Persistent containers for detached event bodies. Slots retain geometry, rotation, scale, render mode, unified skin, and reopen state.</p>
+      </div>
     </div>
     <div class="slots" id="slots"></div>
   </aside>
+
+  <button class="mobile-archive-toggle" id="mobileArchiveToggle" type="button">Archive</button>
 
   <div class="center-label">
     <strong>state carries continuity</strong><br>
@@ -261,6 +411,8 @@
   const admissibilityLabel = document.getElementById('admissibilityLabel');
   const couplingLabel = document.getElementById('couplingLabel');
   const slotsRoot = document.getElementById('slots');
+  const archivePanel = document.getElementById('archivePanel');
+  const mobileArchiveToggle = document.getElementById('mobileArchiveToggle');
 
   const DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
   const slotCount = 8;
@@ -272,6 +424,8 @@
     h: 0,
     chamberWidth: 0,
     archiveWidth: 278,
+    isMobile: false,
+    archiveOpen: false,
     time: 0,
     mouseX: 0.45,
     mouseY: 0.48,
@@ -498,9 +652,22 @@
     }
   }
 
+  function updateArchiveUI() {
+    if (state.isMobile) {
+      archivePanel.classList.toggle('collapsed', !state.archiveOpen);
+      mobileArchiveToggle.textContent = state.archiveOpen ? 'Close Archive' : 'Archive';
+    } else {
+      archivePanel.classList.remove('collapsed');
+      mobileArchiveToggle.textContent = 'Archive';
+    }
+  }
+
   function resize() {
     state.w = window.innerWidth;
     state.h = window.innerHeight;
+    state.isMobile = state.w <= 900;
+    state.archiveWidth = state.isMobile ? 0 : 278;
+    if (!state.isMobile) state.archiveOpen = false;
     state.chamberWidth = state.w - state.archiveWidth;
 
     canvas.width = Math.floor(state.w * DPR);
@@ -510,6 +677,7 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
     createSlots();
+    updateArchiveUI();
   }
 
   function updateField(dt) {
@@ -983,6 +1151,10 @@
         const specimen = state.archive[i];
         if (!specimen) return;
         setInspect(specimen, i);
+        if (state.isMobile) {
+          state.archiveOpen = false;
+          updateArchiveUI();
+        }
       });
 
       slotsRoot.appendChild(slot);
@@ -1403,7 +1575,7 @@
     drawSpecimen(state.currentSpecimen, {
       centerX: state.chamberWidth * 0.5,
       centerY: state.h * 0.5,
-      scale: 1.85,
+      scale: state.isMobile ? 1.35 : 1.85,
       alpha: 1,
       wireAlpha: 0.97,
       pointAlpha: 0.98,
@@ -1411,13 +1583,14 @@
     });
 
     ctx.fillStyle = 'rgba(224, 236, 246, 0.88)';
-    ctx.font = '12px Inter, system-ui, sans-serif';
-    ctx.fillText('INSPECT MODE', 26, state.h - 56);
+    ctx.font = state.isMobile ? '11px Inter, system-ui, sans-serif' : '12px Inter, system-ui, sans-serif';
+    ctx.fillText('INSPECT MODE', 18, state.h - 52);
     ctx.fillStyle = 'rgba(168, 188, 206, 0.86)';
-    ctx.fillText('A archive   |   W wire   |   S shade   |   Esc close', 26, state.h - 34);
+    ctx.fillText(state.isMobile ? 'A archive | W/S mode | Esc close' : 'A archive   |   W wire   |   S shade   |   Esc close', 18, state.h - 30);
   }
 
   function drawDivider() {
+    if (state.isMobile) return;
     ctx.save();
     const x = state.chamberWidth;
     const g = ctx.createLinearGradient(x - 20, 0, x + 14, 0);
@@ -1447,17 +1620,16 @@
     requestAnimationFrame(frame);
   }
 
-  canvas.addEventListener('mousemove', (e) => {
+  function handlePointerMove(clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
-    state.mouseX = clamp(e.clientX / rect.width, 0, 1);
-    state.mouseY = clamp(e.clientY / rect.height, 0, 1);
-  });
+    state.mouseX = clamp((clientX - rect.left) / rect.width, 0, 1);
+    state.mouseY = clamp((clientY - rect.top) / rect.height, 0, 1);
+  }
 
-  canvas.addEventListener('click', (e) => {
+  function handleActivate(clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX / rect.width;
-    const y = e.clientY / rect.height;
-    if (e.clientX > state.chamberWidth) return;
+    const x = (clientX - rect.left) / rect.width;
+    const y = (clientY - rect.top) / rect.height;
 
     state.biasX = clamp(x, 0.06, 0.9);
     state.biasY = clamp(y, 0.08, 0.92);
@@ -1466,6 +1638,32 @@
     if (!state.event.active && !state.inspect) {
       triggerEvent(state.biasX, state.biasY);
     }
+  }
+
+  canvas.addEventListener('mousemove', (e) => {
+    handlePointerMove(e.clientX, e.clientY);
+  });
+
+  canvas.addEventListener('click', (e) => {
+    handleActivate(e.clientX, e.clientY);
+  });
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (!e.touches.length) return;
+    const t = e.touches[0];
+    handlePointerMove(t.clientX, t.clientY);
+    handleActivate(t.clientX, t.clientY);
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (!e.touches.length) return;
+    const t = e.touches[0];
+    handlePointerMove(t.clientX, t.clientY);
+  }, { passive: true });
+
+  mobileArchiveToggle.addEventListener('click', () => {
+    state.archiveOpen = !state.archiveOpen;
+    updateArchiveUI();
   });
 
   window.addEventListener('keydown', (e) => {
